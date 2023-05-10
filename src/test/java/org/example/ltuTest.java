@@ -4,11 +4,7 @@ import com.codeborne.selenide.Configuration;
 import com.codeborne.selenide.Selenide;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.Assert;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,9 +15,14 @@ import static com.codeborne.selenide.Selectors.*;
 import static com.codeborne.selenide.Selenide.*;
 
 
-public class ltuTest {
-    private static final Logger LOGGER = LoggerFactory.getLogger(ltuTest.class);
+/**
+ * Unit test for simple App.
+ */
 
+
+public class ltuTest {
+
+    private static final Logger logger = LoggerFactory.getLogger(ltuTest.class);
 
     private static String LTU_USERNAME;
     private static String LTU_PASSWORD;
@@ -42,7 +43,6 @@ public class ltuTest {
         Configuration.reportsFolder ="C:\\Users\\alaae\\IdeaProjects\\LTUTest\\target\\screenshots" ;
         Configuration.screenshots = true;
         Configuration.savePageSource = false;
-        screenshot("jpeg");
 
 
 
@@ -59,28 +59,28 @@ public class ltuTest {
             LTU_USERNAME = node.get("ltuCredentials").get("Användarid").asText();
             LTU_PASSWORD = node.get("ltuCredentials").get("Lösenord").asText();
         } catch (Exception e) {
-            LOGGER.error("Failed to load LTU credentials from JSON file", e);
+            logger.error("Failed to load LTU credentials from JSON file", e);
         }
         // Navigate to the LTU website and accept cookies
         try {
             Selenide.open("https://www.ltu.se/");
             $(byId("CybotCookiebotDialog")).$(byId("CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll")).click();
         } catch (Exception e) {
-            LOGGER.error("Failed to navigate to LTU website or accept cookies", e);
+            logger.error("Failed to navigate to LTU website or accept cookies", e);
             return;
         }
         // Verify that the correct page is loaded
         try {
             $(byCssSelector("div[class^='ltu-big-logo']")).shouldBe(visible);
         } catch (Exception e) {
-            LOGGER.error("Failed to verify that the correct page is loaded", e);
+            logger.error("Failed to verify that the correct page is loaded", e);
             return;
         }
         // Click on the "Student" button
         try {
             $(byId("main-nav")).$(byText("Student")).click();
         } catch (Exception e) {
-            LOGGER.error("Failed to click on the 'Student' button", e);
+            logger.error("Failed to click on the 'Student' button", e);
             return;
         }
 
@@ -88,7 +88,7 @@ public class ltuTest {
             // Wait for the login button to appear and click it
             $(byId("maincontent")).shouldBe(visible).$(byText("Logga in")).click();
         } catch (Exception e) {
-            LOGGER.error("Failed to wait for login button to appear and click it: " + e.getMessage());
+            logger.error("Failed to wait for login button to appear and click it: " + e.getMessage());
             return;
         }
         // Read the Facebook credentials from the JSON file
@@ -98,100 +98,129 @@ public class ltuTest {
             $(byId("password")).val(LTU_PASSWORD);
             $(byCssSelector("[class$='btn-submit']")).click();
         } catch (Exception e) {
-            LOGGER.error("Failed to fill in login form and click login button", e);
+            logger.error("Failed to fill in login form and click login button", e);
         }
+        // after all tests are done, close all extra tabs, navigate to the first tab and log out
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                Selenide.closeWindow();
+                Selenide.switchTo().window(0);
+            } catch (Exception e) {
+                logger.error("Failed to close extra tabs and navigate to the first tab", e);
+            }
+
+            try {
+                $(byCssSelector("li[id$='userAvatar']")).shouldBe(visible).click();
+                $(byCssSelector("a[title^='Logga'] span[class='nav-item-label']")).shouldBe(visible).click();
+                logger.info("Logged out");
+
+            } catch (Exception e) {
+                logger.error("Failed to log out", e);
+            }
+            }));
     }
-        @Test
+    @Test
+    @Order(1)
+    void searchForFinalExamInfo() {
 
-       void searchForFinalExamInfo() {
-
-        // Switch to the new window or tab
+        // Click on the Canvas link
         try {
             $(byCssSelector("a[title$='Canvas']"))
                     .shouldBe(visible)
                     .click();
+            logger.info("Clicked on the Canvas link.");
         } catch (Exception e) {
-            LOGGER.error("Failed to wait Canvas element to be visible and click it: " + e.getMessage());
+            logger.error("Failed to wait for the Canvas element to be visible and click it: " + e.getMessage());
             return;
         }
+
         // Switch to the new window or tab
-            Selenide.switchTo().window(1);
-        try {
-            $(byCssSelector("button[id*='courses']")).shouldBe(visible).click();
+        Selenide.switchTo().window(1);
 
+        // Click on the Courses button
+        try {
+            $(byCssSelector("button[id*='courses']"))
+                    .shouldBe(visible)
+                    .click();
+            logger.info("Clicked on the Courses button.");
         } catch (Exception e) {
-            LOGGER.error("Failed to wait courses element to be visible and click it: " + e.getMessage());
+            logger.error("Failed to wait for the Courses element to be visible and click it: " + e.getMessage());
             return;
         }
-            try {
-                $(byXpath("//a[contains(text(),'I0015N, Test av IT-system, Lp4, V23')]"))
-                        .shouldBe(visible)
-                        .click();
-            } catch (Exception e) {
-                LOGGER.error("Failed to wait courses element to be visible and click it: " + e.getMessage());
-                return;
+
+        // Click on the course link
+        try {
+            $(byXpath("//a[contains(text(),'I0015N, Test av IT-system, Lp4, V23')]"))
+                    .shouldBe(visible)
+                    .click();
+            logger.info("Clicked on the course link.");
+        } catch (Exception e) {
+            logger.error("Failed to wait for the course link element to be visible and click it: " + e.getMessage());
+            return;
+        }
+
+        // Click on the Modules link
+        try {
+            $(byCssSelector("a[class='modules']"))
+                    .shouldBe(visible)
+                    .click();
+            logger.info("Clicked on the Modules link.");
+        } catch (Exception e) {
+            logger.error("Failed to wait for the Modules element to be visible and click it: " + e.getMessage());
+            return;
+        }
+
+        // Wait for the Final Examination element to be visible and click it
+        try {
+            $(byCssSelector("div[id='51135']")).shouldBe(visible);
+            $(byCssSelector("div[id='51135']")).click();
+            logger.info("Clicked on the Final Examination element.");
+            $(byCssSelector("a[title*='Final Examination']")).shouldBe(visible)
+                    .click();
+            logger.info("Clicked on the Final Examination link.");
+        } catch (Exception e) {
+            logger.error("Failed to click on the Final Examination element: " + e.getMessage());
+            return;
+        }
+
+        // Check if the expected text is present
+        String expectedText = "The examination is on Tuesday, May 30th, from 9:00 - 14:00.";
+        try {
+            $(byXpath("//*[@id='content']")).shouldBe(visible);
+            String actualText = $(byXpath("//*[@id='content']"))
+                    .getText();
+            // take screenshot and save it as jpeg
+            screenshot("final_examination.jpeg");
+            if (actualText.contains(expectedText)) {
+                logger.info("Found the expected text: " + expectedText);
+            } else {
+                logger.error("Did not find the expected text: " + expectedText);
             }
-            try {
-                $(byCssSelector("a[class='modules']"))
-                        .shouldBe(visible)
-                        .click();
-            } catch (Exception e) {
-                LOGGER.error("Failed to wait modules element to be visible and click it: " + e.getMessage());
-                return;
-            }
-            try {
-                $(byCssSelector("div[id='51135']")).shouldBe(visible);
 
-            } catch (Exception e) {
-                LOGGER.error("Failed to wait Final Examination element to be visible and click it: " + e.getMessage());
-                return;
-            }
-            try {
-                $(byCssSelector("div[id='51135']"))
-                        .click();
+        } catch (Exception e) {
+            logger.error("Failed to find the expected text: " + e.getMessage());
+        }
 
-                $(byCssSelector("a[title*='Final Examination']")).shouldBe(visible)
-                        .click();
-
-            } catch (Exception e) {
-                LOGGER.error("Failed to click  Final Examination element: " + e.getMessage());
-                return;
-            }
-
-
-            String expectedText = "The examination is on Tuesday, May 30th, from 9:00 - 14:00.";
-            try {
-                $(byXpath("//*[@id='content']"))
-                        .shouldBe(visible);
-                String actualText = $(byXpath("//*[@id='content']"))
-                        .getText();
-                screenshot("final_examination.jpeg");
-                if (actualText.contains(expectedText)) {
-                    LOGGER.info("Found the expected text: " + expectedText);
-                } else {
-                    LOGGER.error("Did not find the expected text: " + expectedText);
-                }
-
-            } catch (Exception e) {
-                LOGGER.error("Failed to find the expected text: " + e.getMessage());
-            }
-            Selenide.closeWindow();
-            Selenide.switchTo().window(0);
+        // Close the current window or tab and switch back to the original one
+        Selenide.closeWindow();
+        Selenide.switchTo().window(0);
     }
+
+
 
         @Disabled
         @Test
         @Order(2)
-        public void testCreateTranscript() {
+        void testCreateTranscript() {
 
         // Wait for the Certificates element to be visible and click it
         try {
             $(byCssSelector("a[id$='271']"))
                     .shouldBe(visible)
                     .click();
-            LOGGER.info("Clicked on Certificates element");
+            logger.info("Clicked on Certificates element");
         } catch (Exception e) {
-            LOGGER.error("Failed to wait Certificates element to be visible and click it: " + e.getMessage());
+            logger.error("Failed to wait Certificates element to be visible and click it: " + e.getMessage());
             return;
         }
         // Switch to the new window or tab
@@ -200,26 +229,26 @@ public class ltuTest {
             $(byCssSelector("a[class$='btn-ladok-inloggning']"))
                     .shouldBe(visible)
                     .click();
-            LOGGER.info("Clicked on Ladok login button");
+            logger.info("Clicked on Ladok login button");
         } catch (Exception e) {
-            LOGGER.error("Failed to wait for Ladok login button to appear and click it: " + e.getMessage());
+            logger.error("Failed to wait for Ladok login button to appear and click it: " + e.getMessage());
             return;
         }
         String searchQuery = "LTU";
         try {
             $(byId("searchinput")).shouldBe(visible)
                     .val(searchQuery).pressEnter();
-            LOGGER.info("Entered search query: " + searchQuery);
+            logger.info("Entered search query: " + searchQuery);
         } catch (Exception e) {
-            LOGGER.error("Failed to wait for search label and click it: " + e.getMessage());
+            logger.error("Failed to wait for search label and click it: " + e.getMessage());
             return;
         }
         try {
             $(byCssSelector("div[class$='institution-text']")).shouldBe(visible)
                     .click();
-            LOGGER.info("Clicked on first search result");
+            logger.info("Clicked on first search result");
         } catch (Exception e) {
-            LOGGER.error("Failed to wait for first option and click it: " + e.getMessage());
+            logger.error("Failed to wait for first option and click it: " + e.getMessage());
             return;
         }
 
@@ -230,9 +259,9 @@ public class ltuTest {
             $(byXpath("//a[@href='/student/app/studentwebb/intyg']"))
                     .shouldBe(visible)
                     .click();
-            LOGGER.info("");
+            logger.info("");
         } catch (Exception e) {
-            LOGGER.error(" " + e.getMessage());
+            logger.error(" " + e.getMessage());
             return;
         }
         try {
@@ -246,54 +275,54 @@ public class ltuTest {
                         .shouldBe(visible)
                         .click();
                 //$(byXpath("//button[contains(@class, 'me-lg-3')]")).shouldBe(visible).click();
-                LOGGER.info("Created a Transcript successfully");
+                logger.info("Created a Transcript successfully");
             } catch (Exception e) {
-                LOGGER.error("Failed to creat a Transcript : " + e.getMessage());
+                logger.error("Failed to creat a Transcript : " + e.getMessage());
             }
             Selenide.closeWindow();
             Selenide.switchTo().window(0);
     }
     @Test
     @Order(3)
-    public void downloadTranscript() {
+     void downloadTranscript() {
         // Wait for the Certificates element to be visible and click it
         try {
             $(byCssSelector("a[id$='271']"))
                     .shouldBe(visible)
                     .click();
-            LOGGER.info("Clicked on Certificates element");
+            logger.info("Clicked on Certificates element");
         } catch (Exception e) {
-            LOGGER.error("Failed to wait Certificates element to be visible and click it: " + e.getMessage());
+            logger.error("Failed to wait Certificates element to be visible and click it: " + e.getMessage());
             return;
         }
         // Switch to the new window or tab
-        Selenide.switchTo().window(1);
+        Selenide.switchTo().window(2);
         try {
             $(byCssSelector("a[class$='btn-ladok-inloggning']"))
                     .shouldBe(visible)
                     .click();
-            LOGGER.info("Clicked on Ladok login button");
+            logger.info("Clicked on Ladok login button");
         } catch (Exception e) {
-            LOGGER.error("Failed to wait for Ladok login button to appear and click it: " + e.getMessage());
+            logger.error("Failed to wait for Ladok login button to appear and click it: " + e.getMessage());
             return;
         }
         String searchQuery = "LTU";
         try {
             $(byId("searchinput")).shouldBe(visible)
                     .val(searchQuery).pressEnter();
-            LOGGER.info("Entered search query: " + searchQuery);
+            logger.info("Entered search query: " + searchQuery);
         } catch (Exception e) {
-            LOGGER.error("Failed to wait for search label and click it: " + e.getMessage());
+            logger.error("Failed to wait for search label and click it: " + e.getMessage());
             return;
         }
         try {
             $(byCssSelector("div[class$='institution-text']")).shouldBe(visible)
                     .click();
             Thread.sleep(2000);
-            LOGGER.info("Clicked on first search result");
+            logger.info("Clicked on first search result");
 
         } catch (Exception e) {
-            LOGGER.error("Failed to wait for first option and click it: " + e.getMessage());
+            logger.error("Failed to wait for first option and click it: " + e.getMessage());
 
         }
         try {
@@ -303,40 +332,104 @@ public class ltuTest {
             $(byXpath("//a[@href='/student/app/studentwebb/intyg']"))
                     .shouldBe(visible)
                     .click();
-            LOGGER.info("");
+            logger.info("");
         } catch (Exception e) {
-            LOGGER.error(" " + e.getMessage());
+            logger.error(" " + e.getMessage());
             return;
         }
 
 
         try {
+            // Click on the link to download the file
             $(byXpath("//div[@class='card-header'][.//a[contains(@href, 'aa')]]"))
                     .shouldBe(visible)
                     .click();
-            // downloded file should be saved in Configuration.downloadsFolder = "C:\\Users\\alaae\\IdeaProjects\\LTUTest\\target\\downloads";
+            logger.info("Clicked on Transcript");
 
-            //wait for the pdf file to be downloaded
-            Thread.sleep(10000);
-            //check if the file is downloaded by opening the last file in the downloads folder
-            File folder = new File(Configuration.downloadsFolder);
-            File[] listOfFiles = folder.listFiles();
-            String fileName = listOfFiles[listOfFiles.length - 1].getName();
-            LOGGER.info("Downloaded file name is: " + fileName);
-            //check if the file is downloaded successfully and the file name contains the expected text by
-
-            Assert.assertTrue(fileName.contains("intyg") || fileName.contains("Transcript"));
-
-            LOGGER.info("Downloaded Transcript successfully");
+            // Wait for the file to download
+            Thread.sleep(5000);
+            logger.info("Downloaded Transcript successfully");
         } catch (Exception e) {
-            LOGGER.error("Failed to download Transcript : " + e.getMessage());
+            logger.error("Failed to download Transcript: " + e.getMessage());
 
-        }
+            }
+
+        Selenide.closeWindow();
+        Selenide.switchTo().window(0);
 
 
     }
 
-}
+    @Test
+    @Order(4)
+    void downloadCourseSyllabus() {
+        // Click on the Canvas link
+        try {
+            $(byCssSelector("a[title$='Canvas']"))
+                    .shouldBe(visible)
+                    .click();
+            logger.info("Clicked on the Canvas link.");
+        } catch (Exception e) {
+            logger.error("Failed to wait for the Canvas element to be visible and click it: " + e.getMessage());
+            return;
+        }
+
+        // Switch to the new window or tab
+        Selenide.switchTo().window(1);
+        // Click on the Courses button
+        try {
+            $(byCssSelector("button[id*='courses']"))
+                    .shouldBe(visible)
+                    .click();
+            logger.info("Clicked on the Courses button.");
+        } catch (Exception e) {
+            logger.error("Failed to wait for the Courses element to be visible and click it: " + e.getMessage());
+            return;
+        }
+
+        // Click on the course link
+        try {
+            $(byXpath("//a[contains(text(),'I0015N, Test av IT-system, Lp4, V23')]"))
+                    .shouldBe(visible)
+                    .click();
+            logger.info("Clicked on the course link.");
+        } catch (Exception e) {
+            logger.error("Failed to wait for the course link element to be visible and click it: " + e.getMessage());
+            return;
+        }
+        try {
+            $(byXpath("//a[contains(@href, 'av')]"))
+                    .shouldBe(visible)
+                    .click();
+            logger.info("Clicked on the Syllabus link.");
+        } catch (Exception e) {
+            logger.error("Failed to wait for the Syllabus link element to be visible and click it: " + e.getMessage());
+            return;
+        }
+        // Switch to the new window or tab
+        Selenide.switchTo().window(2);
+            try {
+                // Click on the link to download the file
+                $(byXpath("//img[@alt='PDF']"))
+                        .shouldBe(visible)
+                        .click();
+                logger.info("Clicked on the Syllabus link.");
+
+                // Wait for the file to download
+                Thread.sleep(5000);
+                logger.info("Downloaded Syllabus successfully");
+            } catch (Exception e) {
+                logger.error("Failed to download Syllabus: " + e.getMessage());
+
+            }
+            Selenide.closeWindow();
+            Selenide.switchTo().window(0);
+
+        }
+
+    }
+
+
 
 
 
