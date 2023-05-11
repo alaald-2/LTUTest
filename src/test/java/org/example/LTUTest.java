@@ -1,28 +1,31 @@
 package org.example;
 
 import com.codeborne.selenide.Configuration;
+import com.codeborne.selenide.Screenshots;
 import com.codeborne.selenide.Selenide;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
-
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Date;
 import static com.codeborne.selenide.Condition.visible;
+import static com.codeborne.selenide.Configuration.reportsFolder;
 import static com.codeborne.selenide.Selectors.*;
-import static com.codeborne.selenide.Selenide.*;
+import static com.codeborne.selenide.Selenide.$;
 
 
-/**
- * Unit test for simple App.
- */
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+public class LTUTest {
 
-
-public class ltuTest {
-
-    private static final Logger logger = LoggerFactory.getLogger(ltuTest.class);
+    private static final Logger logger = LoggerFactory.getLogger(LTUTest.class);
 
     private static String LTU_USERNAME;
     private static String LTU_PASSWORD;
@@ -30,30 +33,21 @@ public class ltuTest {
 
 
     @BeforeAll
-      public static void setup() {
+    public static void setup() {
         // Set up Selenide configuration options
         Configuration.browser = "chrome";
         Configuration.timeout = 10000;
         Configuration.headless = false;
         Configuration.downloadsFolder = "C:\\Users\\alaae\\IdeaProjects\\LTUTest\\target\\downloads";
-        // no new folder will be created in downloads folder
         Configuration.fastSetValue = true;
         Configuration.baseUrl = "https://www.ltu.se/";
         Configuration.proxyEnabled = false;
-        Configuration.reportsFolder ="C:\\Users\\alaae\\IdeaProjects\\LTUTest\\target\\screenshots" ;
         Configuration.screenshots = true;
         Configuration.savePageSource = false;
-
-
-
-
-
-
-
+        Configuration.reportsFolder ="C:\\Users\\alaae\\IdeaProjects\\LTUTest\\target\\screenshots" ;
 
         // Load LTU credentials from JSON file
         try {
-            // Load LTU credentials from JSON file
             ObjectMapper mapper = new ObjectMapper();
             JsonNode node = mapper.readTree(new File("c:/temp/ltu.json"));
             LTU_USERNAME = node.get("ltuCredentials").get("Användarid").asText();
@@ -61,6 +55,7 @@ public class ltuTest {
         } catch (Exception e) {
             logger.error("Failed to load LTU credentials from JSON file", e);
         }
+
         // Navigate to the LTU website and accept cookies
         try {
             Selenide.open("https://www.ltu.se/");
@@ -69,6 +64,7 @@ public class ltuTest {
             logger.error("Failed to navigate to LTU website or accept cookies", e);
             return;
         }
+
         // Verify that the correct page is loaded
         try {
             $(byCssSelector("div[class^='ltu-big-logo']")).shouldBe(visible);
@@ -76,6 +72,7 @@ public class ltuTest {
             logger.error("Failed to verify that the correct page is loaded", e);
             return;
         }
+
         // Click on the "Student" button
         try {
             $(byId("main-nav")).$(byText("Student")).click();
@@ -91,6 +88,7 @@ public class ltuTest {
             logger.error("Failed to wait for login button to appear and click it: " + e.getMessage());
             return;
         }
+
         // Read the Facebook credentials from the JSON file
         try {
             $(byXpath("//*[@id='fm1']")).shouldBe(visible);
@@ -100,24 +98,41 @@ public class ltuTest {
         } catch (Exception e) {
             logger.error("Failed to fill in login form and click login button", e);
         }
-        // after all tests are done, close all extra tabs, navigate to the first tab and log out
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            try {
-                Selenide.closeWindow();
-                Selenide.switchTo().window(0);
-            } catch (Exception e) {
-                logger.error("Failed to close extra tabs and navigate to the first tab", e);
+    }
+
+    @BeforeEach
+    public void beforeEachTest() {
+        Selenide.switchTo().window(0);
+    }
+
+    @AfterEach
+    public void afterEachTest() {
+        Selenide.closeWindow();
+    }
+
+    @AfterAll
+    public static void teardown() {
+        // Switch to the first window or tab
+        Selenide.switchTo().window(0);
+
+        // Click on the user icon
+        try {
+            $(byCssSelector("a[class^='user-avatar-link']")).shouldBe(visible).click();
+            logger.info("Clicked on the user icon.");
+
+            // Click on the logout button
+              $(byXpath("/html/body/div/div[1]/div[3]/div/div/div[1]/div/div/span[2]/div[2]/ul/li[3]/ul/li[2]/a/span"))
+                      .shouldBe(visible)
+                      .click();
+                logger.info("Clicked on the logout button.");
+        } catch (Exception e) {
+                logger.error("Failed to wait for the user icon element to be visible and click it: " + e.getMessage());
+                return;
             }
 
-            try {
-                $(byCssSelector("li[id$='userAvatar']")).shouldBe(visible).click();
-                $(byCssSelector("a[title^='Logga'] span[class='nav-item-label']")).shouldBe(visible).click();
-                logger.info("Logged out");
 
-            } catch (Exception e) {
-                logger.error("Failed to log out", e);
-            }
-            }));
+
+
     }
     @Test
     @Order(1)
@@ -139,7 +154,7 @@ public class ltuTest {
 
         // Click on the Courses button
         try {
-            $(byCssSelector("button[id*='courses']"))
+            $(byXpath("//*[@id='global_nav_courses_link']"))
                     .shouldBe(visible)
                     .click();
             logger.info("Clicked on the Courses button.");
@@ -170,14 +185,25 @@ public class ltuTest {
             return;
         }
 
+        // Scroll down to the bottom of the page
+        try {
+            Selenide.executeJavaScript("window.scrollTo(0, document.body.scrollHeight)");
+            logger.info("Scrolled down to the bottom of the page.");
+        } catch (Exception e) {
+            logger.error("Failed to scroll down to the bottom of the page: " + e.getMessage());
+            return;
+        }
+
         // Wait for the Final Examination element to be visible and click it
         try {
-            $(byCssSelector("div[id='51135']")).shouldBe(visible);
-            $(byCssSelector("div[id='51135']")).click();
-            logger.info("Clicked on the Final Examination element.");
-            $(byCssSelector("a[title*='Final Examination']")).shouldBe(visible)
+            $(byXpath("//*[@id='context_module_51135']"))
+                    .shouldBe(visible)
                     .click();
-            logger.info("Clicked on the Final Examination link.");
+            logger.info("Clicked on the Final Examination element.");
+            $(byCssSelector("a[title*='Final Examination']"))
+                    .shouldBe(visible)
+                    .click();
+
         } catch (Exception e) {
             logger.error("Failed to click on the Final Examination element: " + e.getMessage());
             return;
@@ -186,11 +212,10 @@ public class ltuTest {
         // Check if the expected text is present
         String expectedText = "The examination is on Tuesday, May 30th, from 9:00 - 14:00.";
         try {
-            $(byXpath("//*[@id='content']")).shouldBe(visible);
+            $(byXpath("//*[@id='content']"))
+                    .shouldBe(visible);
             String actualText = $(byXpath("//*[@id='content']"))
                     .getText();
-            // take screenshot and save it as jpeg
-            screenshot("final_examination.jpeg");
             if (actualText.contains(expectedText)) {
                 logger.info("Found the expected text: " + expectedText);
             } else {
@@ -201,9 +226,37 @@ public class ltuTest {
             logger.error("Failed to find the expected text: " + e.getMessage());
         }
 
-        // Close the current window or tab and switch back to the original one
-        Selenide.closeWindow();
-        Selenide.switchTo().window(0);
+        // Wait for 2 seconds and then take a screenshot and save it as a JPEG
+        Selenide.sleep(2000);
+
+        try {
+             // Take a screenshot
+             File screenshot = Screenshots.takeScreenShotAsFile();
+             // Read the full image
+             BufferedImage fullImg = ImageIO.read(screenshot);
+             // Crop the entire page screenshot to get only element screenshot
+             BufferedImage finalExam = fullImg.getSubimage(0, 0, 1920, 1080);
+             // Save the cropped image in reports folder
+             File finalExamFile = new File(reportsFolder + "/final_examination.jpeg");
+             // Write the cropped image to our file
+             ImageIO.write(finalExam, "jpeg", finalExamFile);
+             // if screenshot exists move it to reports folder and rename it to final_examination.jpeg
+             if (screenshot.exists()) {
+                 logger.info("Screenshot taken and saved as final_examination.jpeg");
+                 Files.move(screenshot.toPath(), finalExamFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                 // set last modified to current time
+                 finalExamFile.setLastModified(System.currentTimeMillis());
+                 logger.info("Screenshot file moved to reports folder and renamed to final_examination.jpeg");
+
+                  } else {
+                    logger.error("Failed to take screenshot: ");
+                    logger.warn("Screenshot file does not exist");
+                }
+
+        } catch (Exception e) {
+                ;
+        }
+
     }
 
 
@@ -252,19 +305,24 @@ public class ltuTest {
             return;
         }
 
-        try {
-            $(byXpath("//button[@role='button']"))
-                    .shouldBe(visible)
-                    .click();
-            $(byXpath("//a[@href='/student/app/studentwebb/intyg']"))
-                    .shouldBe(visible)
-                    .click();
-            logger.info("");
-        } catch (Exception e) {
-            logger.error(" " + e.getMessage());
-            return;
-        }
-        try {
+            try {
+                // Click on the button to expand the menu
+                $(byXpath("//button[@role='button']"))
+                        .shouldBe(visible)
+                        .click();
+                // Click on the link to the "intyg" page
+                $(byXpath("//a[@href='/student/app/studentwebb/intyg']"))
+                        .shouldBe(visible)
+                        .click();
+                // Log a message to indicate that the link was clicked
+                logger.info("Clicked on the link to the 'intyg' page.");
+            } catch (Exception e) {
+                // If an exception is thrown, log an error message and return
+                logger.error("Failed to click on the link to the 'intyg' page: " + e.getMessage());
+                return;
+            }
+
+            try {
                 $(byXpath("//button[@title='Create']"))
                         .shouldBe(visible)
                         .click();
@@ -279,13 +337,12 @@ public class ltuTest {
             } catch (Exception e) {
                 logger.error("Failed to creat a Transcript : " + e.getMessage());
             }
-            Selenide.closeWindow();
-            Selenide.switchTo().window(0);
+
     }
     @Test
     @Order(3)
      void downloadTranscript() {
-        // Wait for the Certificates element to be visible and click it
+        // Wait for the Certificates element to be visible and click it to open the Ladok login page
         try {
             $(byCssSelector("a[id$='271']"))
                     .shouldBe(visible)
@@ -296,7 +353,7 @@ public class ltuTest {
             return;
         }
         // Switch to the new window or tab
-        Selenide.switchTo().window(2);
+        Selenide.switchTo().window(1);
         try {
             $(byCssSelector("a[class$='btn-ladok-inloggning']"))
                     .shouldBe(visible)
@@ -326,18 +383,21 @@ public class ltuTest {
 
         }
         try {
+            // Click on the button to expand the menu
             $(byXpath("//button[@role='button']"))
                     .shouldBe(visible)
                     .click();
+            // Click on the link to the "intyg" page
             $(byXpath("//a[@href='/student/app/studentwebb/intyg']"))
                     .shouldBe(visible)
                     .click();
-            logger.info("");
+            // Log a message to indicate that the link was clicked
+            logger.info("Clicked on the link to the 'intyg' page.");
         } catch (Exception e) {
-            logger.error(" " + e.getMessage());
+            // If an exception is thrown, log an error message and return
+            logger.error("Failed to click on the link to the 'intyg' page: " + e.getMessage());
             return;
         }
-
 
         try {
             // Click on the link to download the file
@@ -348,15 +408,20 @@ public class ltuTest {
 
             // Wait for the file to download
             Thread.sleep(5000);
-            logger.info("Downloaded Transcript successfully");
-        } catch (Exception e) {
-            logger.error("Failed to download Transcript: " + e.getMessage());
-
+            // Verify that the file has been downloaded to the 'target/downloads' folder
+            File downloadsFolder = new File(Configuration.downloadsFolder);
+            File[] downloadedFiles = downloadsFolder.listFiles();
+            if (downloadedFiles != null && downloadedFiles.length > 0) {
+                Arrays.sort(downloadedFiles, Comparator.comparingLong(File::lastModified).reversed());
+                File lastDownloadedFile = downloadedFiles[0];
+                logger.info("Downloaded Transcript successfully: " + lastDownloadedFile.getName());
+                logger.info("Last modified: " + new Date(lastDownloadedFile.lastModified()));
+            } else {
+                logger.error("Failed to download Transcript: File not found in " + Configuration.downloadsFolder);
             }
 
-        Selenide.closeWindow();
-        Selenide.switchTo().window(0);
-
+        } catch (Exception e) {
+        }
 
     }
 
@@ -378,7 +443,7 @@ public class ltuTest {
         Selenide.switchTo().window(1);
         // Click on the Courses button
         try {
-            $(byCssSelector("button[id*='courses']"))
+            $(byXpath("//*[@id='global_nav_courses_link']"))
                     .shouldBe(visible)
                     .click();
             logger.info("Clicked on the Courses button.");
@@ -408,26 +473,36 @@ public class ltuTest {
         }
         // Switch to the new window or tab
         Selenide.switchTo().window(2);
-            try {
-                // Click on the link to download the file
-                $(byXpath("//img[@alt='PDF']"))
-                        .shouldBe(visible)
-                        .click();
-                logger.info("Clicked on the Syllabus link.");
+        try {
+            // Click on the link to download the file
+            $(byXpath("//img[@alt='PDF']"))
+                    .shouldBe(visible)
+                    .click();
+            logger.info("Clicked on the  download link.");
 
-                // Wait for the file to download
-                Thread.sleep(5000);
-                logger.info("Downloaded Syllabus successfully");
-            } catch (Exception e) {
-                logger.error("Failed to download Syllabus: " + e.getMessage());
+            // Wait for the file to download
+            Thread.sleep(5000);
 
+            // Verify that the file has been downloaded to the 'target/downloads' folder
+            File downloadsFolder = new File(Configuration.downloadsFolder);
+            File[] downloadedFiles = downloadsFolder.listFiles();
+            if (downloadedFiles != null && downloadedFiles.length > 0) {
+                Arrays.sort(downloadedFiles, Comparator.comparingLong(File::lastModified).reversed());
+                File lastDownloadedFile = downloadedFiles[0];
+                logger.info("Downloaded Syllabus successfully: " + lastDownloadedFile.getName());
+                logger.info("Last modified: " + new Date(lastDownloadedFile.lastModified()));
+            } else {
+                logger.error("Failed to download Syllabus: File not found in " + Configuration.downloadsFolder);
             }
-            Selenide.closeWindow();
-            Selenide.switchTo().window(0);
 
+        } catch (Exception e) {
+            logger.error("Failed to download Syllabus: " + e.getMessage());
         }
 
+
     }
+
+}
 
 
 
